@@ -84,25 +84,86 @@ meta = fetch_metadata()
 st.sidebar.title("📊 Filter Dashboard")
 st.sidebar.markdown("Filters dynamically query the database.")
 
-# Keywords
+# Helper functions for context-aware filtering
+def get_available_keywords(selected_brands, selected_platforms):
+    conn = get_connection()
+    sql = "SELECT DISTINCT keyword FROM listings WHERE keyword IS NOT NULL AND keyword != ''"
+    params = []
+    if selected_brands:
+        sql += " AND brand IN (" + ",".join(["?"] * len(selected_brands)) + ")"
+        params.extend(selected_brands)
+    if selected_platforms:
+        sql += " AND platform IN (" + ",".join(["?"] * len(selected_platforms)) + ")"
+        params.extend(selected_platforms)
+    res = sorted([r[0] for r in conn.execute(sql, params).fetchall()])
+    conn.close()
+    return res
+
+def get_available_brands(selected_keywords, selected_platforms):
+    conn = get_connection()
+    sql = "SELECT DISTINCT brand FROM listings WHERE brand IS NOT NULL AND brand != ''"
+    params = []
+    if selected_keywords:
+        sql += " AND keyword IN (" + ",".join(["?"] * len(selected_keywords)) + ")"
+        params.extend(selected_keywords)
+    if selected_platforms:
+        sql += " AND platform IN (" + ",".join(["?"] * len(selected_platforms)) + ")"
+        params.extend(selected_platforms)
+    res = sorted([r[0] for r in conn.execute(sql, params).fetchall()])
+    conn.close()
+    return res
+
+def get_available_platforms(selected_keywords, selected_brands):
+    conn = get_connection()
+    sql = "SELECT DISTINCT platform FROM listings WHERE platform IS NOT NULL AND platform != ''"
+    params = []
+    if selected_keywords:
+        sql += " AND keyword IN (" + ",".join(["?"] * len(selected_keywords)) + ")"
+        params.extend(selected_keywords)
+    if selected_brands:
+        sql += " AND brand IN (" + ",".join(["?"] * len(selected_brands)) + ")"
+        params.extend(selected_brands)
+    res = sorted([r[0] for r in conn.execute(sql, params).fetchall()])
+    conn.close()
+    return res
+
+# Initialize session state for active selections if not present
+if "keywords_sel" not in st.session_state:
+    st.session_state.keywords_sel = []
+if "brands_sel" not in st.session_state:
+    st.session_state.brands_sel = []
+if "platforms_sel" not in st.session_state:
+    st.session_state.platforms_sel = []
+
+# Fetch dynamic context-aware options based on other active selections
+available_keywords = get_available_keywords(st.session_state.brands_sel, st.session_state.platforms_sel)
+available_brands = get_available_brands(st.session_state.keywords_sel, st.session_state.platforms_sel)
+available_platforms = get_available_platforms(st.session_state.keywords_sel, st.session_state.brands_sel)
+
+# Clean up selected lists to only contain options currently available
+st.session_state.keywords_sel = [k for k in st.session_state.keywords_sel if k in available_keywords]
+st.session_state.brands_sel = [b for b in st.session_state.brands_sel if b in available_brands]
+st.session_state.platforms_sel = [p for p in st.session_state.platforms_sel if p in available_platforms]
+
+# Keywords Multiselect
 selected_keywords = st.sidebar.multiselect(
     "Keywords",
-    options=meta["keywords"],
-    default=[]
+    options=available_keywords,
+    key="keywords_sel"
 )
 
-# Brands
+# Brands Multiselect
 selected_brands = st.sidebar.multiselect(
     "Brands",
-    options=meta["brands"],
-    default=[]
+    options=available_brands,
+    key="brands_sel"
 )
 
-# Platforms
+# Platforms Multiselect
 selected_platforms = st.sidebar.multiselect(
     "Platforms",
-    options=meta["platforms"],
-    default=[]
+    options=available_platforms,
+    key="platforms_sel"
 )
 
 # Price Range Slider
@@ -134,6 +195,9 @@ position_range = st.sidebar.slider(
 
 # Reset Button
 if st.sidebar.button("Clear All Filters"):
+    st.session_state.keywords_sel = []
+    st.session_state.brands_sel = []
+    st.session_state.platforms_sel = []
     st.rerun()
 
 # ----------------------------------------------------
