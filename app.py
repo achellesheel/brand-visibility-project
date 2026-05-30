@@ -274,7 +274,7 @@ with tabs[0]:
     
     with row2_col1:
         st.markdown("#### 🏢 Top 10 Most Frequent Brands")
-        brand_counts = df['brand'].value_counts().head(10).reset_index()
+        brand_counts = df[df['brand'] != 'No Brand mentioned']['brand'].value_counts().head(10).reset_index()
         brand_counts.columns = ['Brand', 'Appearances']
         fig_brand_freq = px.bar(
             brand_counts, x="Brand", y="Appearances",
@@ -324,7 +324,7 @@ with tabs[1]:
     st.subheader("Brand Visibility and Ranking Benchmarks")
     
     # Filter out empty or placeholder brands to compute clean KPIs
-    df_brand = df[df['brand'].notna() & (df['brand'] != '')]
+    df_brand = df[df['brand'].notna() & (df['brand'] != '') & (df['brand'] != 'No Brand mentioned')]
     
     if df_brand.empty:
         st.info("Please widen filters to show brand-level insights.")
@@ -501,7 +501,7 @@ with tabs[2]:
     
     with col3_5:
         st.markdown("#### 🏷️ Average Discount % by Brand (Top 15 Discounted)")
-        brand_discounts = df[df['brand'].notna() & (df['brand'] != '')].groupby('brand')['discount_pct'].mean().reset_index()
+        brand_discounts = df[df['brand'].notna() & (df['brand'] != '') & (df['brand'] != 'No Brand mentioned')].groupby('brand')['discount_pct'].mean().reset_index()
         top_discount_brands = brand_discounts.sort_values(by='discount_pct', ascending=False).head(15)
         fig_discount_brand = px.bar(
             top_discount_brands, x="discount_pct", y="brand", orientation='h',
@@ -602,7 +602,7 @@ with tabs[3]:
         st.plotly_chart(fig_plat_pos, use_container_width=True)
         
     st.markdown("#### 🏢 Brand Distribution across Selling Platforms (Top 10 Platforms & Brands)")
-    top_10_brands_list = df['brand'].value_counts().head(10).index
+    top_10_brands_list = df[df['brand'] != 'No Brand mentioned']['brand'].value_counts().head(10).index
     top_10_platforms_list = df['platform'].value_counts().head(10).index
     df_top_brands_plat = df[df['brand'].isin(top_10_brands_list) & df['platform'].isin(top_10_platforms_list)]
     
